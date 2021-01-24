@@ -1,4 +1,10 @@
 __pycache__
 .idea
+.DS_Store
 
+build
+dist
+*.spec
+
+assets
 *.csv
