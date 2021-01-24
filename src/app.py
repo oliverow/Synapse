@@ -1,8 +1,9 @@
 import tkinter as tk
+import tkinter.ttk as ttk
 import random
 
 
-COLOR_SCHEME = ['GREEN', 'YELLOW', 'ORANGE', 'MAGENTA', 'RED']
+COLOR_SCHEME = ['#90ee90', 'YELLOW', 'ORANGE', 'MAGENTA', 'RED']
 
 
 class gui_app(tk.Tk):
@@ -142,8 +143,11 @@ class SimilarReviewPage(Page):
         main_panel.grid(row = 1, column = 1, sticky = "nsew")
         main_panel.grid_columnconfigure(1, weight = 1)
 
+        self.progress_bar = ttk.Progressbar(main_panel, orient = "horizontal", length = 0, mode = "determinate")
+        self.progress_bar.grid(row = 0, column = 1, sticky = "nsew")
+
         inspect_button = tk.Button(main_panel, text = "Toggle full set", command = self.toggle_inspect)
-        inspect_button.grid(row = 0, column = 0)
+        inspect_button.grid(row = 1, column = 0)
         self.inspect_list = tk.Listbox(main_panel)
         self.inspect_list.yview()
         self.inspect_list.grid_remove()
@@ -152,12 +156,12 @@ class SimilarReviewPage(Page):
         self.current_word = None
         self.word_var = tk.StringVar()
         word_display = tk.Label(main_panel, textvariable = self.word_var)
-        word_display.grid(row = 0, column = 1)
+        word_display.grid(row = 1, column = 1)
         self.meaning_var = tk.StringVar()
         meaning_display = tk.Message(main_panel, textvariable = self.meaning_var, aspect = 500)
-        meaning_display.grid(row = 1, column = 1, rowspan = 2, sticky = "nsew", padx = 0)
+        meaning_display.grid(row = 2, column = 1, rowspan = 2, sticky = "nsew", padx = 0)
         selection_panel = tk.PanedWindow(main_panel)
-        selection_panel.grid(row = 4, column = 1)
+        selection_panel.grid(row = 5, column = 1)
         yes_button = tk.Button(selection_panel, text = "✓", command = self.memorized)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
@@ -177,6 +181,7 @@ class SimilarReviewPage(Page):
         self.current_set = self.vocab_list.pop(0)
         for index, word in enumerate(self.current_set):
             self.inspect_list.insert(index, word.word)
+        self.progress_bar.config(length = len(self.vocab_list))
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
@@ -200,6 +205,7 @@ class SimilarReviewPage(Page):
             self.inspect_list.delete(0, self.inspect_list.size())
             for index, word in enumerate(self.current_set):
                 self.inspect_list.insert(index, word.word)
+            self.progress_bar['value'] = self.progress_bar['length'] - len(self.vocab_list)
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
