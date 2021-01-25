@@ -70,6 +70,7 @@ class EntryPage(Page):
         main_panel.grid(row = 1, column = 1, columnspan = 2, sticky = "nsew")
         main_panel.grid_columnconfigure(2, weight = 1)
         main_panel.grid_rowconfigure(0, weight = 1)
+        main_panel.grid_rowconfigure(2, weight = 1)
         main_panel.grid_rowconfigure(5, weight = 1)
 
         word_label = tk.Label(main_panel, text = "word:")
@@ -145,10 +146,14 @@ class SimilarReviewPage(Page):
         main_panel.grid_columnconfigure(1, weight = 1)
 
         self.progress_bar = ttk.Progressbar(main_panel, orient = "horizontal", length = 0, mode = "determinate")
-        self.progress_bar.grid(row = 0, column = 1, sticky = "nsew")
+        self.progress_bar.grid(row = 0, column = 1, sticky = "nsew", pady = 20)
+
+        self.count_var = tk.IntVar()
+        self.counter_display = tk.Label(main_panel, textvariable = self.count_var)
+        self.counter_display.grid(row = 0, column = 2, ipadx = 20, padx = 30, sticky = "nsew")
 
         inspect_button = tk.Button(main_panel, text = "Toggle full set", command = self.toggle_inspect)
-        inspect_button.grid(row = 1, column = 0)
+        inspect_button.grid(row = 2, column = 0)
         self.inspect_list = tk.Listbox(main_panel)
         self.inspect_list.yview()
         self.inspect_list.grid_forget()
@@ -158,7 +163,7 @@ class SimilarReviewPage(Page):
         word_font = tkfont.Font(size = 32)
         self.word_var = tk.StringVar()
         word_display = tk.Label(main_panel, textvariable = self.word_var, font = word_font)
-        word_display.grid(row = 1, column = 1, pady = 25)
+        word_display.grid(row = 1, column = 1, pady = 15)
         word_display.bind("<Button-1>", self.toggle_meaning)
         self.meaning_var = tk.StringVar()
         self.meaning_display = tk.Message(main_panel, textvariable = self.meaning_var, aspect = 500)
@@ -166,7 +171,7 @@ class SimilarReviewPage(Page):
         self.meaning_visible = False
 
         selection_panel = tk.PanedWindow(main_panel)
-        selection_panel.grid(row = 5, column = 1)
+        selection_panel.grid(row = 5, column = 1, rowspan = 2, sticky = "s")
         yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
@@ -179,10 +184,6 @@ class SimilarReviewPage(Page):
         selection_font2 = tkfont.Font(size = 20)
         starred_check = tk.Checkbutton(selection_panel, text = "☆", font = selection_font2, variable = self.starred_flag, command = self.starred)
         starred_check.grid(row = 1, column = 0)
-
-        self.count_var = tk.IntVar()
-        self.counter_display = tk.Label(main_panel, textvariable = self.count_var)
-        self.counter_display.grid(row = 0, column = 2, padx = 50, sticky = "nsew")
 
     def prepare(self):
         result = self.controller.database.list()
@@ -247,7 +248,7 @@ class SimilarReviewPage(Page):
             self.inspect_list.grid_forget()
             self.inspect_list_visible = False
         else:
-            self.inspect_list.grid(row = 2, column = 0, rowspan = 4)
+            self.inspect_list.grid(row = 3, column = 0, rowspan = 10)
             self.inspect_list_visible = True
 
     def toggle_meaning(self, event):
@@ -255,5 +256,5 @@ class SimilarReviewPage(Page):
             self.meaning_display.grid_forget()
             self.meaning_visible = False
         else:
-            self.meaning_display.grid(row = 2, column = 1, rowspan = 2, sticky = "nsew", pady = 25)
+            self.meaning_display.grid(row = 4, column = 1, sticky = "nsew", pady = 25)
             self.meaning_visible = True
