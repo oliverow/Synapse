@@ -1,5 +1,6 @@
 import tkinter as tk
 import tkinter.ttk as ttk
+import tkinter.font as tkfont
 import random
 
 
@@ -154,18 +155,27 @@ class SimilarReviewPage(Page):
         self.inspect_list_visible = False
 
         self.current_word = None
+        word_font = tkfont.Font(size = 32)
         self.word_var = tk.StringVar()
-        word_display = tk.Label(main_panel, textvariable = self.word_var)
+        word_display = tk.Label(main_panel, textvariable = self.word_var, font = word_font)
         word_display.grid(row = 1, column = 1)
         self.meaning_var = tk.StringVar()
         meaning_display = tk.Message(main_panel, textvariable = self.meaning_var, aspect = 500)
         meaning_display.grid(row = 2, column = 1, rowspan = 2, sticky = "nsew", padx = 0)
         selection_panel = tk.PanedWindow(main_panel)
         selection_panel.grid(row = 5, column = 1)
-        yes_button = tk.Button(selection_panel, text = "✓", command = self.memorized)
+        yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
         no_button.grid(row = 0, column = 0)
+        self.memorized_flag = tk.BooleanVar()
+        selection_font1 = tkfont.Font(size = 32)
+        memorized_check = tk.Checkbutton(selection_panel, text = "☺︎", font = selection_font1, variable = self.memorized_flag, command = self.memorized)
+        memorized_check.grid(row = 1, column = 1)
+        self.starred_flag = tk.BooleanVar()
+        selection_font2 = tkfont.Font(size = 20)
+        starred_check = tk.Checkbutton(selection_panel, text = "☆", font = selection_font2, variable = self.starred_flag, command = self.starred)
+        starred_check.grid(row = 1, column = 0)
 
         self.count_var = tk.IntVar()
         self.counter_display = tk.Label(main_panel, textvariable = self.count_var)
@@ -195,6 +205,8 @@ class SimilarReviewPage(Page):
         self.meaning_var.set(word.meaning)
         self.count_var.set(word.wrongtimes)
         self.counter_display.config(bg = COLOR_SCHEME[word.wrongtimes])
+        self.memorized_flag.set(word.memorized)
+        self.starred_flag.set(word.starred)
 
     def next_word(self):
         if len(self.vocab_list) == 0:
@@ -209,7 +221,7 @@ class SimilarReviewPage(Page):
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
-    def memorized(self):
+    def remembered(self):
         self.current_word.get_right()
         self.controller.database.update_entry(self.current_word.word, "wrongtimes", self.current_word.wrongtimes)
         self.next_word()
@@ -218,6 +230,14 @@ class SimilarReviewPage(Page):
         self.current_word.get_wrong()
         self.controller.database.update_entry(self.current_word.word, "wrongtimes", self.current_word.wrongtimes)
         self.next_word()
+
+    def memorized(self):
+        self.current_word.memorized = self.memorized_flag.get()
+        self.controller.database.update_entry(self.current_word.word, "memorized", self.current_word.memorized)
+
+    def starred(self):
+        self.current_word.starred = self.starred_flag.get()
+        self.controller.database.update_entry(self.current_word.word, "starred", self.current_word.starred)
 
     def toggle_inspect(self):
         if self.inspect_list_visible:
