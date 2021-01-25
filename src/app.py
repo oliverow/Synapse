@@ -151,17 +151,20 @@ class SimilarReviewPage(Page):
         inspect_button.grid(row = 1, column = 0)
         self.inspect_list = tk.Listbox(main_panel)
         self.inspect_list.yview()
-        self.inspect_list.grid_remove()
+        self.inspect_list.grid_forget()
         self.inspect_list_visible = False
 
         self.current_word = None
         word_font = tkfont.Font(size = 32)
         self.word_var = tk.StringVar()
         word_display = tk.Label(main_panel, textvariable = self.word_var, font = word_font)
-        word_display.grid(row = 1, column = 1)
+        word_display.grid(row = 1, column = 1, pady = 25)
+        word_display.bind("<Button-1>", self.toggle_meaning)
         self.meaning_var = tk.StringVar()
-        meaning_display = tk.Message(main_panel, textvariable = self.meaning_var, aspect = 500)
-        meaning_display.grid(row = 2, column = 1, rowspan = 2, sticky = "nsew", padx = 0)
+        self.meaning_display = tk.Message(main_panel, textvariable = self.meaning_var, aspect = 500)
+        self.meaning_display.grid_forget()
+        self.meaning_visible = False
+
         selection_panel = tk.PanedWindow(main_panel)
         selection_panel.grid(row = 5, column = 1)
         yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
@@ -244,5 +247,13 @@ class SimilarReviewPage(Page):
             self.inspect_list.grid_forget()
             self.inspect_list_visible = False
         else:
-            self.inspect_list.grid(row = 1, column = 0, rowspan = 5)
+            self.inspect_list.grid(row = 2, column = 0, rowspan = 4)
             self.inspect_list_visible = True
+
+    def toggle_meaning(self, event):
+        if self.meaning_visible:
+            self.meaning_display.grid_forget()
+            self.meaning_visible = False
+        else:
+            self.meaning_display.grid(row = 2, column = 1, rowspan = 2, sticky = "nsew", pady = 25)
+            self.meaning_visible = True
