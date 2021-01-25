@@ -33,9 +33,9 @@ class gui_app(tk.Tk):
         # start with home page
         self.show_frame(HomePage)
 
-    def show_frame(self, pageName):
+    def show_frame(self, pageName, *args):
         self.frames[pageName].tkraise()
-        self.frames[pageName].prepare()
+        self.frames[pageName].prepare(*args)
 
 
 class Page(tk.Frame):
@@ -126,17 +126,24 @@ class ReviewPage(Page):
         menu = tk.PanedWindow(self)
         menu.grid(row = 1, column = 1, sticky = "nsew")
         menu.grid_columnconfigure(0, weight = 1)
-        menu.grid_columnconfigure(1, weight = 1)
-        similarReviewPageButton = tk.Button(menu, text = "Similar Words", command = lambda: controller.show_frame(SimilarReviewPage))
-        similarReviewPageButton.grid(row = 0, column = 0, pady = 50)
-        reviewPageButton = tk.Button(menu, text = "Coming...", command = lambda: controller.show_frame(ReviewPage))
-        reviewPageButton.grid(row = 0, column = 1)
+
+        similar_review_menu = tk.PanedWindow(menu)
+        similar_review_menu.grid(row = 0, column = 0, pady = 50)
+        similar_review_label = tk.Label(similar_review_menu, text = "Similar Words")
+        similar_review_label.grid(row = 0, column = 1)
+        wrong_similar_review_button = tk.Button(similar_review_menu, text = "Hard Words", command = lambda: controller.show_frame(SimilarReviewPage, "Hard"))
+        wrong_similar_review_button.grid(row = 1, column = 0, pady = 30)
+        all_similar_review_button = tk.Button(similar_review_menu, text = "All Words", command = lambda: controller.show_frame(SimilarReviewPage, "All"))
+        all_similar_review_button.grid(row = 1, column = 1)
+        memorized_similar_review_button = tk.Button(similar_review_menu, text = "Memorized Words", command = lambda: controller.show_frame(SimilarReviewPage, "Memorized"))
+        memorized_similar_review_button.grid(row = 1, column = 2)
 
 
 class SimilarReviewPage(Page):
     def __init__(self, parent, controller):
         Page.__init__(self, parent)
         self.controller = controller
+        self.mode = "All"
 
         back_button = tk.Button(self, text = "Quit️", command = self.exit)
         back_button.grid(row = 0, column = 0)
@@ -147,10 +154,13 @@ class SimilarReviewPage(Page):
 
         self.progress_bar = ttk.Progressbar(main_panel, orient = "horizontal", length = 0, mode = "determinate")
         self.progress_bar.grid(row = 0, column = 1, sticky = "nsew", pady = 20)
+        self.progress_label = tk.StringVar()
+        self.progress_display = tk.Label(main_panel, textvariable = self.progress_label)
+        self.progress_display.grid(row = 0, column = 2)
 
         self.count_var = tk.IntVar()
         self.counter_display = tk.Label(main_panel, textvariable = self.count_var)
-        self.counter_display.grid(row = 0, column = 2, ipadx = 20, padx = 30, sticky = "nsew")
+        self.counter_display.grid(row = 1, column = 2, ipadx = 20, padx = 30, sticky = "nsew")
 
         inspect_button = tk.Button(main_panel, text = "Toggle full set", command = self.toggle_inspect)
         inspect_button.grid(row = 2, column = 0)
@@ -171,7 +181,7 @@ class SimilarReviewPage(Page):
         self.meaning_visible = False
 
         selection_panel = tk.PanedWindow(main_panel)
-        selection_panel.grid(row = 5, column = 1, rowspan = 2, sticky = "s")
+        selection_panel.grid(row = 5, column = 1, rowspan = 4, sticky = "s")
         yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
@@ -185,7 +195,8 @@ class SimilarReviewPage(Page):
         starred_check = tk.Checkbutton(selection_panel, text = "☆", font = selection_font2, variable = self.starred_flag, command = self.starred)
         starred_check.grid(row = 1, column = 0)
 
-    def prepare(self):
+    def prepare(self, *args):
+        self.mode = args[0]
         result = self.controller.database.list()
         random.shuffle(result)
         self.vocab_list = []
@@ -196,6 +207,7 @@ class SimilarReviewPage(Page):
         for index, word in enumerate(self.current_set):
             self.inspect_list.insert(index, word.word)
         self.progress_bar.config(length = len(self.vocab_list))
+        self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['length']))
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
@@ -205,6 +217,12 @@ class SimilarReviewPage(Page):
 
     def update_word(self, word = None):
         if word is None: word = self.current_word
+        if self.mode == "Hard" and word.memorized and word.wrongtimes == 0:
+            self.next_word()
+            return
+        if self.mode == "Memorized" and (not word.memorized or word.wrongtimes != 0):
+            self.next_word()
+            return
         self.word_var.set(word.word)
         self.meaning_var.set(word.meaning)
         self.count_var.set(word.wrongtimes)
@@ -213,7 +231,7 @@ class SimilarReviewPage(Page):
         self.starred_flag.set(word.starred)
 
     def next_word(self):
-        if len(self.vocab_list) == 0:
+        if len(self.vocab_list) == 0 and len(self.current_set) == 0:
             self.exit()
             return
         if len(self.current_set) == 0:
@@ -222,6 +240,7 @@ class SimilarReviewPage(Page):
             for index, word in enumerate(self.current_set):
                 self.inspect_list.insert(index, word.word)
             self.progress_bar['value'] = self.progress_bar['length'] - len(self.vocab_list)
+            self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['length']))
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
@@ -248,7 +267,7 @@ class SimilarReviewPage(Page):
             self.inspect_list.grid_forget()
             self.inspect_list_visible = False
         else:
-            self.inspect_list.grid(row = 3, column = 0, rowspan = 10)
+            self.inspect_list.grid(row = 3, column = 0, rowspan = 5)
             self.inspect_list_visible = True
 
     def toggle_meaning(self, event):
@@ -258,3 +277,4 @@ class SimilarReviewPage(Page):
         else:
             self.meaning_display.grid(row = 4, column = 1, sticky = "nsew", pady = 25)
             self.meaning_visible = True
+
