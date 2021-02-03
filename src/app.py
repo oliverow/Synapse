@@ -176,8 +176,11 @@ class SimilarReviewPage(Page):
         self.inspect_list.yview()
         self.inspect_list.grid_forget()
         self.inspect_list_visible = False
+        self.inspect_list.bind("<<ListboxSelect>>", self.jump_to_word)
 
+        self.iter_index = 0                     # the current position in normal iteration
         self.current_word = None
+        self.jump_back_word = None                   # to store the current word in case of manual jump
         word_font = tkfont.Font(size = 32)
         self.word_var = tk.StringVar()
         word_display = tk.Label(main_panel, textvariable = self.word_var, font = word_font)
@@ -189,18 +192,22 @@ class SimilarReviewPage(Page):
         self.meaning_visible = False
 
         selection_panel = tk.PanedWindow(main_panel)
-        selection_panel.grid(row = 5, column = 1, rowspan = 4, sticky = "s")
+        selection_panel.grid(row = 5, column = 1, sticky = "s")
         yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
         no_button.grid(row = 0, column = 0)
+        next_button = tk.Button(selection_panel, text = "→", command = self.iterate_word)
+        next_button.grid(row = 0, column = 2)
+        mark_panel = tk.PanedWindow(main_panel)
+        mark_panel.grid(row = 6, column = 1, rowspan = 4, sticky = "s")
         self.memorized_flag = tk.BooleanVar()
         selection_font1 = tkfont.Font(size = 32)
-        memorized_check = tk.Checkbutton(selection_panel, text = "☺︎", font = selection_font1, variable = self.memorized_flag, command = self.memorized)
+        memorized_check = tk.Checkbutton(mark_panel, text = "☺︎", font = selection_font1, variable = self.memorized_flag, command = self.memorized)
         memorized_check.grid(row = 1, column = 1)
         self.starred_flag = tk.BooleanVar()
         selection_font2 = tkfont.Font(size = 20)
-        starred_check = tk.Checkbutton(selection_panel, text = "☆", font = selection_font2, variable = self.starred_flag, command = self.starred)
+        starred_check = tk.Checkbutton(mark_panel, text = "☆", font = selection_font2, variable = self.starred_flag, command = self.starred)
         starred_check.grid(row = 1, column = 0)
 
     def prepare(self, *args):
@@ -216,7 +223,8 @@ class SimilarReviewPage(Page):
             self.inspect_list.insert(index, word.word)
         self.progress_bar.config(maximum = len(self.vocab_list))
         self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
-        self.current_word = self.current_set.pop(0)
+        self.iter_index = 0
+        self.current_word = self.current_set[self.iter_index]
         self.update_word()
 
     def exit(self):
@@ -226,10 +234,10 @@ class SimilarReviewPage(Page):
     def update_word(self, word = None):
         if word is None: word = self.current_word
         if self.mode == "Hard" and word.memorized and word.wrongtimes == 0:
-            self.next_word()
+            self.iterate_word()
             return
         if self.mode == "Memorized" and (not word.memorized or word.wrongtimes != 0):
-            self.next_word()
+            self.iterate_word()
             return
         self.word_var.set(word.word)
         self.meaning_var.set(word.meaning)
@@ -238,29 +246,35 @@ class SimilarReviewPage(Page):
         self.memorized_flag.set(word.memorized)
         self.starred_flag.set(word.starred)
 
-    def next_word(self):
-        if len(self.vocab_list) == 0 and len(self.current_set) == 0:
+    def iterate_word(self):
+        if len(self.vocab_list) == 0 and len(self.current_set) == self.iter_index:
             self.exit()
             return
-        if len(self.current_set) == 0:
+        if len(self.current_set) == self.iter_index:
             self.current_set = self.vocab_list.pop(0)
+            self.iter_index = 0
             self.inspect_list.delete(0, self.inspect_list.size())
             for index, word in enumerate(self.current_set):
                 self.inspect_list.insert(index, word.word)
             self.progress_bar['value'] = self.progress_bar['maximum'] - len(self.vocab_list)
             self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
-        self.current_word = self.current_set.pop(0)
+        if self.jump_back_word is None:
+            self.current_word = self.current_set[self.iter_index]
+            self.iter_index += 1
+        else:
+            self.inspect_list.selection_clear(0, 'end')
+            self.jump_back_word = None
         self.update_word()
 
     def remembered(self):
         self.current_word.get_right()
         self.controller.database.update_entry(self.current_word.word, "wrongtimes", self.current_word.wrongtimes)
-        self.next_word()
+        self.iterate_word()
 
     def forgotten(self):
         self.current_word.get_wrong()
         self.controller.database.update_entry(self.current_word.word, "wrongtimes", self.current_word.wrongtimes)
-        self.next_word()
+        self.iterate_word()
 
     def memorized(self):
         self.current_word.memorized = self.memorized_flag.get()
@@ -286,3 +300,9 @@ class SimilarReviewPage(Page):
             self.meaning_display.grid(row = 4, column = 1, sticky = "nsew", pady = 25)
             self.meaning_visible = True
 
+    def jump_to_word(self, event):
+        word_index = self.inspect_list.curselection()[0]
+        if self.iter_index == word_index:
+            return
+        self.jump_back_word = self.current_word
+        self.update_word(self.current_set[word_index])
