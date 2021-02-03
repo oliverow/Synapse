@@ -4,7 +4,7 @@ import tkinter.font as tkfont
 import random
 
 
-COLOR_SCHEME = ['#90ee90', 'YELLOW', 'ORANGE', 'MAGENTA', 'RED']
+COLOR_SCHEME = ['#90ee90', 'YELLOW', 'ORANGE', 'MAGENTA', 'RED', 'BLACK']
 
 
 class gui_app(tk.Tk):
@@ -84,7 +84,7 @@ class EntryPage(Page):
         add_button = tk.Button(main_panel, text = "add", command = self.add_entry)
         add_button.grid(row = 4, column = 0, columnspan = 2, pady = 20)
 
-        self.status_var = tk.StringVar
+        self.status_var = tk.StringVar()
         status_label = tk.Label(main_panel, textvariable = self.status_var)
         status_label.grid(row = 5, column = 0, columnspan = 2, pady = 10)
 
@@ -97,6 +97,8 @@ class EntryPage(Page):
         back_button.grid(row = 0, column = 0)
 
     def prepare(self):
+        self.list_panel.delete(0, self.list_panel.size())
+        self.list_data = []
         result = self.controller.database.list()
         result = sorted(result)
         for index, line in enumerate(result):
@@ -107,9 +109,15 @@ class EntryPage(Page):
     def add_entry(self):
         word = self.word_input.get()
         hint = self.hint_input.get()
-        selected = self.list_panel.curselection()[0]
-        self.controller.database.create_entry(word, hint, self.list_data[selected])
-        self.status_var.set(word + " entered successfully")
+        try:
+            selected = self.list_data[self.list_panel.curselection()[0]]
+            suffix = " with " + selected.word
+        except Exception as e:
+            selected = None
+            suffix = " as an independent word"
+        self.controller.database.create_entry(word, hint, selected)
+        self.status_var.set(word + " entered successfully" + suffix)
+        self.prepare()
 
     def exit(self):
         self.controller.show_frame(HomePage)
@@ -152,7 +160,7 @@ class SimilarReviewPage(Page):
         main_panel.grid(row = 1, column = 1, sticky = "nsew")
         main_panel.grid_columnconfigure(1, weight = 1)
 
-        self.progress_bar = ttk.Progressbar(main_panel, orient = "horizontal", length = 0, mode = "determinate")
+        self.progress_bar = ttk.Progressbar(main_panel, orient = "horizontal", mode = "determinate")
         self.progress_bar.grid(row = 0, column = 1, sticky = "nsew", pady = 20)
         self.progress_label = tk.StringVar()
         self.progress_display = tk.Label(main_panel, textvariable = self.progress_label)
@@ -206,8 +214,8 @@ class SimilarReviewPage(Page):
         self.current_set = self.vocab_list.pop(0)
         for index, word in enumerate(self.current_set):
             self.inspect_list.insert(index, word.word)
-        self.progress_bar.config(length = len(self.vocab_list))
-        self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['length']))
+        self.progress_bar.config(maximum = len(self.vocab_list))
+        self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
@@ -239,8 +247,8 @@ class SimilarReviewPage(Page):
             self.inspect_list.delete(0, self.inspect_list.size())
             for index, word in enumerate(self.current_set):
                 self.inspect_list.insert(index, word.word)
-            self.progress_bar['value'] = self.progress_bar['length'] - len(self.vocab_list)
-            self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['length']))
+            self.progress_bar['value'] = self.progress_bar['maximum'] - len(self.vocab_list)
+            self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
         self.current_word = self.current_set.pop(0)
         self.update_word()
 
