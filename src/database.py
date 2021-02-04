@@ -26,6 +26,8 @@ class Client:
         return lines
 
     def create_entry(self, word, hint, similar=None):
+        if self.check_existence(word):
+            return "already exists"
         meaning = ""
         try:
             res = requests.get("https://api.dictionaryapi.dev/api/v2/entries/en/"+word)
@@ -49,15 +51,26 @@ class Client:
         try:
             res = self.session.run(command, meaning=meaning)
         except Exception as e:
-            print("Database operation failed")
             print(e)
-        return "Complete"
+            raise Exception("Database operation error {}".format(e))
+        return "entered successfully"
 
     def update_entry(self, word, prop_name, value):
         command = "match(w:word {word:\""+word+"\"}) set w."+prop_name+"=$value"
         try:
             res = self.session.run(command, value=value)
         except Exception as e:
-            print("Database operation failed")
             print(e)
+            raise Exception("Database operation error {}".format(e))
         return "Complete"
+
+    def check_existence(self, word):
+        command = "match(w:word {word:\"" + word + "\"}) return w"
+        try:
+            res = self.session.run(command)
+        except Exception as e:
+            print(e)
+            raise Exception("Database operation error {}".format(e))
+        if len(res.data()) == 0:
+            return False
+        return True
