@@ -115,8 +115,8 @@ class EntryPage(Page):
         except Exception as e:
             selected = None
             suffix = " as an independent word"
-        self.controller.database.create_entry(word, hint, selected)
-        self.status_var.set(word + " entered successfully" + suffix)
+        status = self.controller.database.create_entry(word, hint, selected)
+        self.status_var.set(word + " " + status + suffix)
         self.prepare()
 
     def exit(self):
@@ -153,6 +153,9 @@ class SimilarReviewPage(Page):
         self.controller = controller
         self.mode = "All"
 
+        self.vocab_list = []
+        self.current_set = []
+
         back_button = tk.Button(self, text = "Quit️", command = self.exit)
         back_button.grid(row = 0, column = 0)
 
@@ -178,9 +181,9 @@ class SimilarReviewPage(Page):
         self.inspect_list_visible = False
         self.inspect_list.bind("<<ListboxSelect>>", self.jump_to_word)
 
-        self.iter_index = 0                     # the current position in normal iteration
+        self.iter_index = -1                        # the current position in normal iteration
         self.current_word = None
-        self.jump_back_word = None                   # to store the current word in case of manual jump
+        self.jump_back_word = None                  # to store the current word in case of manual jump
         word_font = tkfont.Font(size = 32)
         self.word_var = tk.StringVar()
         word_display = tk.Label(main_panel, textvariable = self.word_var, font = word_font)
@@ -214,31 +217,22 @@ class SimilarReviewPage(Page):
         self.mode = args[0]
         result = self.controller.database.list()
         random.shuffle(result)
-        self.vocab_list = []
         for line in result:
             random.shuffle(line)
             self.vocab_list.append(line)
-        self.current_set = self.vocab_list.pop(0)
-        for index, word in enumerate(self.current_set):
-            self.inspect_list.insert(index, word.word)
         self.progress_bar.config(maximum = len(self.vocab_list))
         self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
-        self.iter_index = 0
-        self.current_word = self.current_set[self.iter_index]
-        self.update_word()
+        self.iterate_word()
 
     def exit(self):
         self.controller.show_frame(ReviewPage)
         self.inspect_list.delete(0, self.inspect_list.size())
+        self.vocab_list = []
+        self.current_set = []
+        self.iter_index = -1
 
     def update_word(self, word = None):
         if word is None: word = self.current_word
-        if self.mode == "Hard" and word.memorized and word.wrongtimes == 0:
-            self.iterate_word()
-            return
-        if self.mode == "Memorized" and (not word.memorized or word.wrongtimes != 0):
-            self.iterate_word()
-            return
         self.word_var.set(word.word)
         self.meaning_var.set(word.meaning)
         self.count_var.set(word.wrongtimes)
@@ -247,20 +241,34 @@ class SimilarReviewPage(Page):
         self.starred_flag.set(word.starred)
 
     def iterate_word(self):
-        if len(self.vocab_list) == 0 and len(self.current_set) == self.iter_index:
-            self.exit()
-            return
-        if len(self.current_set) == self.iter_index:
-            self.current_set = self.vocab_list.pop(0)
-            self.iter_index = 0
-            self.inspect_list.delete(0, self.inspect_list.size())
-            for index, word in enumerate(self.current_set):
-                self.inspect_list.insert(index, word.word)
-            self.progress_bar['value'] = self.progress_bar['maximum'] - len(self.vocab_list)
-            self.progress_label.set(str(self.progress_bar['value'])+"/"+str(self.progress_bar['maximum']))
         if self.jump_back_word is None:
-            self.current_word = self.current_set[self.iter_index]
+            if len(self.vocab_list) == 0 and len(self.current_set) == self.iter_index + 1:
+                self.exit()
+                return
+
+            if len(self.current_set) == self.iter_index + 1:
+                self.current_set = self.vocab_list.pop(0)
+                self.iter_index = -1
+                self.inspect_list.delete(0, self.inspect_list.size())
+                for index, word in enumerate(self.current_set):
+                    prefix = ''
+                    if word.starred:
+                        prefix += '☆ '
+                    if word.memorized:
+                        prefix += '☺︎ '
+                    self.inspect_list.insert(index, prefix + word.word)
+                self.progress_bar['value'] = self.progress_bar['maximum'] - len(self.vocab_list)
+                self.progress_label.set(str(self.progress_bar['value']) + "/" + str(self.progress_bar['maximum']))
+
             self.iter_index += 1
+            self.current_word = self.current_set[self.iter_index]
+            if self.mode == "Hard" and self.current_word.memorized and self.current_word.wrongtimes == 0:
+                self.iterate_word()
+                return
+            if self.mode == "Memorized" and (not self.current_word.memorized or self.current_word.wrongtimes != 0):
+                self.iterate_word()
+                return
+
         else:
             self.inspect_list.selection_clear(0, 'end')
             self.jump_back_word = None
@@ -303,6 +311,9 @@ class SimilarReviewPage(Page):
     def jump_to_word(self, event):
         word_index = self.inspect_list.curselection()[0]
         if self.iter_index == word_index:
+            self.inspect_list.selection_clear(0, 'end')
+            self.jump_back_word = None
+            self.update_word()
             return
         self.jump_back_word = self.current_word
         self.update_word(self.current_set[word_index])
