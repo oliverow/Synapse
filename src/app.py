@@ -195,7 +195,7 @@ class SimilarReviewPage(Page):
         self.meaning_visible = False
 
         selection_panel = tk.PanedWindow(main_panel)
-        selection_panel.grid(row = 5, column = 1, sticky = "s")
+        selection_panel.grid(row = 8, column = 1, sticky = "s")
         yes_button = tk.Button(selection_panel, text = "✓", command = self.remembered)
         yes_button.grid(row = 0, column = 1)
         no_button = tk.Button(selection_panel, text = "✕", command = self.forgotten)
@@ -203,7 +203,7 @@ class SimilarReviewPage(Page):
         next_button = tk.Button(selection_panel, text = "→", command = self.iterate_word)
         next_button.grid(row = 0, column = 2)
         mark_panel = tk.PanedWindow(main_panel)
-        mark_panel.grid(row = 6, column = 1, rowspan = 4, sticky = "s")
+        mark_panel.grid(row = 9, column = 1, rowspan = 4, sticky = "s")
         self.memorized_flag = tk.BooleanVar()
         selection_font1 = tkfont.Font(size = 32)
         memorized_check = tk.Checkbutton(mark_panel, text = "☺︎", font = selection_font1, variable = self.memorized_flag, command = self.memorized)
@@ -310,10 +310,13 @@ class SimilarReviewPage(Page):
 
     def jump_to_word(self, event):
         word_index = self.inspect_list.curselection()[0]
-        if self.iter_index == word_index:
+        if self.iter_index == word_index and self.jump_back_word is not None:
             self.inspect_list.selection_clear(0, 'end')
+            self.current_word = self.jump_back_word
             self.jump_back_word = None
             self.update_word()
             return
-        self.jump_back_word = self.current_word
-        self.update_word(self.current_set[word_index])
+        if self.jump_back_word is None:
+            self.jump_back_word = self.current_word
+        self.current_word = self.current_set[word_index]
+        self.update_word()
